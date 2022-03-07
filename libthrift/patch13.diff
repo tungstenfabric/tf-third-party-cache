@@ -21,17 +21,6 @@ index 081165910..6a70e1072 100644
  apache.repo=https://repository.apache.org/content/repositories/releases
  
  # Apache Maven publish
-diff --git a/lib/java/gradle/wrapper/gradle-wrapper.properties b/lib/java/gradle/wrapper/gradle-wrapper.properties
-index 7c4388a92..a4b442974 100644
---- a/lib/java/gradle/wrapper/gradle-wrapper.properties
-+++ b/lib/java/gradle/wrapper/gradle-wrapper.properties
-@@ -1,5 +1,5 @@
- distributionBase=GRADLE_USER_HOME
- distributionPath=wrapper/dists
--distributionUrl=https\://services.gradle.org/distributions/gradle-5.6.2-bin.zip
-+distributionUrl=https\://services.gradle.org/distributions/gradle-6.3-bin.zip
- zipStoreBase=GRADLE_USER_HOME
- zipStorePath=wrapper/dists
 diff --git a/lib/java/src/org/apache/thrift/TAsyncProcessor.java b/lib/java/src/org/apache/thrift/TAsyncProcessor.java
 index 66f768896..533e74d86 100644
 --- a/lib/java/src/org/apache/thrift/TAsyncProcessor.java

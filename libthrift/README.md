@@ -17,14 +17,15 @@ sudo docker rm thrift-build
 sudo docker run -it --name thrift-build -v $(pwd)/thrift:/thrift ubuntu:20.04
 
 apt-get update
-apt-get install -y openjdk-13-jre-headless openjdk-13-jdk make bison flex gcc cmake make g++
+apt-get install -y openjdk-11-jdk make bison flex gcc cmake make g++
 cd /thrift/compiler/cpp
 mkdir cmake-build
 cd cmake-build
 cmake ..
 make
 cp bin/thrift ..
-cd ../../../lib/java
+cd ../../..
+cd lib/java
 ./gradlew
 cp build/libs/libthrift-0.13.0-SNAPSHOT.jar ../../libthrift-0.13.0.jar
 exit
