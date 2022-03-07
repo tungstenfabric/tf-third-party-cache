@@ -1,0 +1,192 @@
+diff --git a/lib/java/build.gradle b/lib/java/build.gradle
+index 5f0d2782b..2adfb78a8 100644
+--- a/lib/java/build.gradle
++++ b/lib/java/build.gradle
+@@ -60,4 +60,4 @@ apply from: 'gradle/unitTests.gradle'
+ apply from: 'gradle/cloverCoverage.gradle'
+ apply from: 'gradle/functionalTests.gradle'
+ apply from: 'gradle/publishing.gradle'
+-apply from: 'gradle/codeQualityChecks.gradle'
++//apply from: 'gradle/codeQualityChecks.gradle'
+diff --git a/lib/java/gradle.properties b/lib/java/gradle.properties
+index 081165910..6a70e1072 100644
+--- a/lib/java/gradle.properties
++++ b/lib/java/gradle.properties
+@@ -16,7 +16,7 @@ testPort=9090
+ cloverEnabled=false
+ 
+ # Maven dependency download locations
+-mvn.repo=http://repo1.maven.org/maven2
++mvn.repo=https://repo1.maven.org/maven2
+ apache.repo=https://repository.apache.org/content/repositories/releases
+ 
+ # Apache Maven publish
+diff --git a/lib/java/gradle/wrapper/gradle-wrapper.properties b/lib/java/gradle/wrapper/gradle-wrapper.properties
+index 7c4388a92..a4b442974 100644
+--- a/lib/java/gradle/wrapper/gradle-wrapper.properties
++++ b/lib/java/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-5.6.2-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-6.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/lib/java/src/org/apache/thrift/TAsyncProcessor.java b/lib/java/src/org/apache/thrift/TAsyncProcessor.java
+index 66f768896..533e74d86 100644
+--- a/lib/java/src/org/apache/thrift/TAsyncProcessor.java
++++ b/lib/java/src/org/apache/thrift/TAsyncProcessor.java
+@@ -21,13 +21,8 @@ package org.apache.thrift;
+ import org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer;
+ 
+ public interface TAsyncProcessor {
+-  /**
+-   * Process a single frame.
+-   
+-   * <b>Note:</b> Implementations must call fb.responseReady() once processing
+-   * is complete
+-   *
+-   * @throws TException if the frame cannot be processed
+-   */
+-  public void process(final AsyncFrameBuffer fb) throws TException;
++    /**
++     * Implementations must call fb.responseReady() once processing is complete
++     */
++    public boolean process(final AsyncFrameBuffer fb) throws TException;
+ }
+diff --git a/lib/java/src/org/apache/thrift/TBaseAsyncProcessor.java b/lib/java/src/org/apache/thrift/TBaseAsyncProcessor.java
+index f13f068ef..0ab1827dc 100644
+--- a/lib/java/src/org/apache/thrift/TBaseAsyncProcessor.java
++++ b/lib/java/src/org/apache/thrift/TBaseAsyncProcessor.java
+@@ -43,7 +43,7 @@ public class TBaseAsyncProcessor<I> implements TAsyncProcessor, TProcessor {
+         return Collections.unmodifiableMap(processMap);
+     }
+ 
+-    public void process(final AsyncFrameBuffer fb) throws TException {
++    public boolean process(final AsyncFrameBuffer fb) throws TException {
+ 
+         final TProtocol in = fb.getInputProtocol();
+         final TProtocol out = fb.getOutputProtocol();
+@@ -67,7 +67,7 @@ public class TBaseAsyncProcessor<I> implements TAsyncProcessor, TProcessor {
+               out.getTransport().flush();
+             }
+             fb.responseReady();
+-            return;
++            return true;
+         }
+ 
+         //Get Args
+@@ -89,7 +89,7 @@ public class TBaseAsyncProcessor<I> implements TAsyncProcessor, TProcessor {
+               out.getTransport().flush();
+             }
+             fb.responseReady();
+-            return;
++            return true;
+         }
+         in.readMessageEnd();
+ 
+@@ -105,10 +105,11 @@ public class TBaseAsyncProcessor<I> implements TAsyncProcessor, TProcessor {
+           LOGGER.debug("Exception handling function", e);
+           resultHandler.onError(e);
+         }
+-        return;
++        return true;
+     }
+ 
+     @Override
+-    public void process(TProtocol in, TProtocol out) throws TException {
++    public boolean process(TProtocol in, TProtocol out) throws TException {
++        return false;
+     }
+ }
+diff --git a/lib/java/src/org/apache/thrift/TBaseProcessor.java b/lib/java/src/org/apache/thrift/TBaseProcessor.java
+index 55a0f15d3..f9a9a9e37 100644
+--- a/lib/java/src/org/apache/thrift/TBaseProcessor.java
++++ b/lib/java/src/org/apache/thrift/TBaseProcessor.java
+@@ -23,7 +23,7 @@ public abstract class TBaseProcessor<I> implements TProcessor {
+   }
+ 
+   @Override
+-  public void process(TProtocol in, TProtocol out) throws TException {
++  public boolean process(TProtocol in, TProtocol out) throws TException {
+     TMessage msg = in.readMessageBegin();
+     ProcessFunction fn = processMap.get(msg.name);
+     if (fn == null) {
+@@ -34,8 +34,9 @@ public abstract class TBaseProcessor<I> implements TProcessor {
+       x.write(out);
+       out.writeMessageEnd();
+       out.getTransport().flush();
+-    } else {
+-      fn.process(msg.seqid, in, out, iface);
++      return true;
+     }
++    fn.process(msg.seqid, in, out, iface);
++    return true;
+   }
+ }
+diff --git a/lib/java/src/org/apache/thrift/TMultiplexedProcessor.java b/lib/java/src/org/apache/thrift/TMultiplexedProcessor.java
+index c49486217..55558bcb5 100644
+--- a/lib/java/src/org/apache/thrift/TMultiplexedProcessor.java
++++ b/lib/java/src/org/apache/thrift/TMultiplexedProcessor.java
+@@ -92,7 +92,7 @@ public class TMultiplexedProcessor implements TProcessor {
+      * name was not found in the service map.  You called {@link #registerProcessor(String, TProcessor) registerProcessor}
+      * during initialization, right? :)
+      */
+-    public void process(TProtocol iprot, TProtocol oprot) throws TException {
++    public boolean process(TProtocol iprot, TProtocol oprot) throws TException {
+         /*
+             Use the actual underlying protocol (e.g. TBinaryProtocol) to read the
+             message header.  This pulls the message "off the wire", which we'll
+@@ -110,8 +110,7 @@ public class TMultiplexedProcessor implements TProcessor {
+         if (index < 0) {
+           if (defaultProcessor != null) {
+                 // Dispatch processing to the stored processor
+-                defaultProcessor.process(new StoredMessageProtocol(iprot, message), oprot);
+-                return;
++                return defaultProcessor.process(new StoredMessageProtocol(iprot, message), oprot);
+           }
+             throw new TProtocolException(TProtocolException.NOT_IMPLEMENTED,
+                 "Service name not found in message name: " + message.name + ".  Did you " +
+@@ -135,7 +134,7 @@ public class TMultiplexedProcessor implements TProcessor {
+         );
+ 
+         // Dispatch processing to the stored processor
+-        actualProcessor.process(new StoredMessageProtocol(iprot, standardMessage), oprot);
++        return actualProcessor.process(new StoredMessageProtocol(iprot, standardMessage), oprot);
+     }
+ 
+     /**
+diff --git a/lib/java/src/org/apache/thrift/TProcessor.java b/lib/java/src/org/apache/thrift/TProcessor.java
+index 15ba9c0fe..d79522c3e 100644
+--- a/lib/java/src/org/apache/thrift/TProcessor.java
++++ b/lib/java/src/org/apache/thrift/TProcessor.java
+@@ -24,7 +24,9 @@ import org.apache.thrift.protocol.TProtocol;
+ /**
+  * A processor is a generic object which operates upon an input stream and
+  * writes to some output stream.
++ *
+  */
+ public interface TProcessor {
+-  public void process(TProtocol in, TProtocol out) throws TException;
++  public boolean process(TProtocol in, TProtocol out)
++    throws TException;
+ }
+diff --git a/lib/java/test/org/apache/thrift/TestMultiplexedProcessor.java b/lib/java/test/org/apache/thrift/TestMultiplexedProcessor.java
+index 85e7966bf..01776ca39 100644
+--- a/lib/java/test/org/apache/thrift/TestMultiplexedProcessor.java
++++ b/lib/java/test/org/apache/thrift/TestMultiplexedProcessor.java
+@@ -57,12 +57,13 @@ public class TestMultiplexedProcessor {
+ 
+   static class StubProcessor implements TProcessor {
+     @Override
+-    public void process(TProtocol in, TProtocol out) throws TException {
++    public boolean process(TProtocol in, TProtocol out) throws TException {
+       TMessage msg = in.readMessageBegin();
+       if (!"func".equals(msg.name) || msg.type!=TMessageType.CALL || msg.seqid!=42) {
+         throw new TException("incorrect parameters");
+       }
+       out.writeMessageBegin(new TMessage("func", TMessageType.REPLY, 42));
++      return true;
+     }
+   }
+ 
